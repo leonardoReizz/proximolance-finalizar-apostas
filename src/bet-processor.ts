@@ -327,7 +327,7 @@ export class BetProcessor {
           selectionId: bet.selectionId,
           selectionName: bet.selectionName,
           betRef: bet.betRef,
-          profit: status === "VOID" ? 0 : status === "WON" ? bet.stake * bet.odd : null,
+          profit: 0,
         }]
       };
 
@@ -338,16 +338,17 @@ export class BetProcessor {
           transactionId: newTransactionId,
           amount: parseFloat(amount.toFixed(2)) // Valor positivo para crédito com 2 casas decimais
         };
-        payload.bets[0].profit = parseFloat((amount - bet.stake).toFixed(2)); // Lucro líquido com 2 casas decimais
+        payload.bets[0].profit = parseFloat((amount * (bet.odd - 1)).toFixed(2)); // Lucro líquido com 2 casas decimais
       }
       // Se for reembolso (VOID), adiciona transaction mas sem profit
       else if (status === 'VOID' && amount > 0) {
         const newTransactionId = this.generateTransactionId(bet.betId);
         payload.bets[0].transaction = {
           transactionId: newTransactionId,
-          amount: parseFloat(amount.toFixed(2)) // Valor do reembolso com 2 casas decimais
+          amount: parseFloat(amount.toFixed(2))
         };
-        // Não adiciona profit para VOID
+
+        // payload.bets[0].profit = -(parseFloat((bet.stake - amount).toFixed(2)));
       }
       // Se for derrota (LOST), não precisa de transaction nem profit
       else if (status === 'LOST') {
@@ -369,7 +370,7 @@ export class BetProcessor {
       });
 
       console.log(payload)
-
+      // throw new Error(`API retornou status`);
       if (!response.ok) {
         const errorData: any = await response.json().catch(() => ({}));
         console.log(await response.json())
