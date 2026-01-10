@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { getDb, getRedis } from './database';
 import { Bet, GameEvent, ProcessBetResult, BetLog } from './types';
+import { env } from './env';
 
 /**
  * Processador de Apostas
@@ -298,7 +299,8 @@ export class BetProcessor {
    */
   private async sendBetResultToAPI(bet: Bet, status: 'WON' | 'LOST' | 'VOID', amount: number): Promise<boolean> {
     try {
-      const apiUrl = 'https://ua5pajgphh.execute-api.sa-east-1.amazonaws.com/fulltbet/fast-market';
+      // const apiUrl = 'https://ua5pajgphh.execute-api.sa-east-1.amazonaws.com/fulltbet/fast-market';
+      const apiUrl = env.EXTERNAL_API_URL
 
       // Prepara o payload baseado no documento original da aposta
       const payload: any = {

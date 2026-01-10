@@ -20,5 +20,4 @@ export const config: Config = {
 
   // API Externa (opcional - para creditar/debitar saldo em sistema externo)
   EXTERNAL_API_URL: env.EXTERNAL_API_URL,
-  EXTERNAL_API_KEY: env.EXTERNAL_API_KEY,
 };

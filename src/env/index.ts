@@ -10,7 +10,6 @@ const envSchema = z.object({
   REDIS_PASSWORD: z.string(),
   PROCESS_INTERVAL_MS: z.coerce.number(),
   EXTERNAL_API_URL: z.string(),
-  EXTERNAL_API_KEY: z.string()
 });
 
 const _env = envSchema.safeParse(process.env);
