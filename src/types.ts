@@ -23,6 +23,10 @@ export interface Bet {
   competitionId: string;
   competitionName: string;
   eventId: string;
+  sportEventId?: {
+    eventIdMbook: string;
+    eventIdSportRadar: string;
+  }; // ID real do evento esportivo (sr:sport_event:XXXXX)
   eventName: string;
   eventDate: string;
   handicap: string | null;

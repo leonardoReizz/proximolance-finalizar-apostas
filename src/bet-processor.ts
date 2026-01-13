@@ -138,7 +138,8 @@ export class BetProcessor {
 
     // Extrair campos dos dados disponíveis
     const eventType = bet.marketName as 'side' | 'corner' | 'foul' | 'goal' | 'atLeastOne';
-    const gameId = bet.eventId;
+    // Usar sportEventId se disponível (ID real do sport event), senão usar eventId (fallback para apostas antigas)
+    const gameId = bet?.sportEventId?.eventIdSportRadar;
 
     // Extrair selectedSide de selectionName (ex: "Lateral ira acontecer no JOGO A - Arsenal vs Liverpool")
     const selectedSideMatch = bet.selectionName?.match(/JOGO ([AB])/i);
@@ -146,10 +147,12 @@ export class BetProcessor {
 
     console.log(`[BetProcessor] Processando aposta ${bet.betId}:`, {
       eventType,
-      gameId,
+      sportEventId: gameId,
+      eventId: bet.eventId,
       selectedSide,
       amount,
       totalEvents: events.length,
+      events,
       refundPercentage: `${this.refundPercentage}%`
     });
 
@@ -306,7 +309,7 @@ export class BetProcessor {
       const payload: any = {
         bets: [{
           accountId: bet.accountId,
-          status: status,
+          status: status === "VOID" ? "LOST" : status,
           betId: bet.betId,
           stake: bet.stake,
           odd: bet.odd,
@@ -330,7 +333,6 @@ export class BetProcessor {
           profit: 0,
         }]
       };
-
       // Se for vitória (WON), adiciona transaction com valor positivo e profit
       if (status === 'WON' && amount > 0) {
         const newTransactionId = this.generateTransactionId(bet.betId);
@@ -338,21 +340,22 @@ export class BetProcessor {
           transactionId: newTransactionId,
           amount: parseFloat(amount.toFixed(2)) // Valor positivo para crédito com 2 casas decimais
         };
-        payload.bets[0].profit = parseFloat((amount * (bet.odd - 1)).toFixed(2)); // Lucro líquido com 2 casas decimais
+        payload.bets[0].profit = parseFloat((bet.stake * (bet.odd - 1)).toFixed(2)); // Lucro líquido com 2 casas decimais
       }
-      // Se for reembolso (VOID), adiciona transaction mas sem profit
+      // Se for reembolso (VOID), adiciona transaction
       else if (status === 'VOID' && amount > 0) {
+        let refundAmount = amount
         const newTransactionId = this.generateTransactionId(bet.betId);
         payload.bets[0].transaction = {
           transactionId: newTransactionId,
           amount: parseFloat(amount.toFixed(2))
-        };
-
-        // payload.bets[0].profit = -(parseFloat((bet.stake - amount).toFixed(2)));
+        }
+        payload.bets[0].profit = parseFloat((-(bet.stake - refundAmount)).toFixed(2))
       }
       // Se for derrota (LOST), não precisa de transaction nem profit
       else if (status === 'LOST') {
         // Não adiciona profit para LOST
+        payload.bets[0].profit = -(bet.stake)
       }
 
       console.log(`[BetProcessor] 📤 Enviando resultado para API: ${status}`, {
@@ -369,8 +372,9 @@ export class BetProcessor {
         body: JSON.stringify(payload)
       });
 
-      console.log(payload)
-      // throw new Error(`API retornou status`);
+
+      console.log(payload, payload?.bets[0]?.transaction)
+      // throw new Error( "ERROR API")
       if (!response.ok) {
         const errorData: any = await response.json().catch(() => ({}));
         console.log(await response.json())
@@ -444,7 +448,7 @@ export class BetProcessor {
             amount: refundAmount,
             reason: 'bet_refund',
             success: apiSuccess,
-            apiStatus: 'VOID',
+            apiStatus: 'LOST',
             houseFee: lostAmount,
             timestamp: new Date().toISOString()
           }
