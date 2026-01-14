@@ -248,7 +248,7 @@ export class BetProcessor {
       finalStatus = 'won';
     } else if (result.refundAmount > 0) {
       // Se tem reembolso, marca como 'void'
-      finalStatus = 'void';
+      finalStatus = 'lost';
     } else {
       finalStatus = 'lost';
     }
