@@ -188,35 +188,41 @@ export class BetProcessor {
       }
     }
 
-    // Aposta normal em jogo específico (A ou B) - qual jogo terá o evento PRIMEIRO
+    // Aposta normal em jogo específico (A ou B)
     else {
-      // Buscar todos os eventos do tipo apostado em TODOS os jogos
-      const eventsOfType = events.filter(e => e.mappedType === eventType);
+      // Buscar TODOS os eventos válidos em TODOS os jogos
+      const allValidEvents = events.filter(e =>
+        e.mappedType && ['side', 'corner', 'foul', 'goal'].includes(e.mappedType)
+      );
 
-      console.log(`[BetProcessor] 🔍 Debug: eventType=${eventType}, eventsOfType.length=${eventsOfType.length}, events.length=${events.length}`);
+      // Buscar eventos do tipo apostado NO JOGO APOSTADO
+      const eventsOfTypeInBetGame = events.filter(e =>
+        e.mappedType === eventType && e.gameId === gameId
+      );
 
-      if (eventsOfType.length === 0) {
-        // Nenhum evento do tipo ocorreu em nenhum jogo - REEMBOLSO conforme configurado
+      console.log(`[BetProcessor] 🔍 Debug: eventType=${eventType}, eventsOfTypeInBetGame=${eventsOfTypeInBetGame.length}, allValidEvents=${allValidEvents.length}`);
+
+      // Se não houve NENHUM evento em NENHUM jogo - REEMBOLSO
+      if (allValidEvents.length === 0) {
         isWinner = false;
         refundAmount = amount * (this.refundPercentage / 100);
-        resultReason = `Nenhum evento do tipo ${eventType} ocorreu em nenhum jogo - Reembolso de ${this.refundPercentage}%`;
+        resultReason = `Nenhum evento ocorreu em nenhum jogo - Reembolso de ${this.refundPercentage}%`;
         console.log(`[BetProcessor] 🔄 Aplicando reembolso: amount=${amount}, refundPercentage=${this.refundPercentage}, refundAmount=${refundAmount}`);
-      } else {
-        // Ordenar eventos por timestamp para encontrar o PRIMEIRO
-        eventsOfType.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        const firstEvent = eventsOfType[0];
-
-        // Verifica se o primeiro evento foi no jogo apostado
-        isWinner = firstEvent.gameId === gameId;
-
-        if (isWinner) {
-          winAmount = Math.floor(amount * odd);
-          resultReason = `O primeiro ${eventType} ocorreu no jogo ${selectedSide} às ${firstEvent.matchClock || firstEvent.timestamp}`;
-        } else {
-          // O primeiro evento foi no outro jogo - PERDE TUDO
-          refundAmount = 0;
-          resultReason = `O primeiro ${eventType} ocorreu no jogo oposto às ${firstEvent.matchClock || firstEvent.timestamp}`;
-        }
+      }
+      // Se houve o evento do tipo apostado no jogo apostado - GANHA
+      else if (eventsOfTypeInBetGame.length > 0) {
+        isWinner = true;
+        winAmount = Math.floor(amount * odd);
+        const firstEventInBetGame = eventsOfTypeInBetGame[0];
+        resultReason = `Evento ${eventType} ocorreu no jogo ${selectedSide} às ${firstEventInBetGame.matchClock || firstEventInBetGame.timestamp}`;
+        console.log(`[BetProcessor] 🎉 Vitória: evento ${eventType} ocorreu no jogo apostado`);
+      }
+      // Se houve eventos mas NÃO o evento do tipo apostado no jogo apostado - PERDE (sem refund)
+      else {
+        isWinner = false;
+        refundAmount = 0;
+        resultReason = `Evento ${eventType} não ocorreu no jogo ${selectedSide}, mas houve ${allValidEvents.length} evento(s) - Perda total`;
+        console.log(`[BetProcessor] ❌ Perda: evento ${eventType} não ocorreu no jogo apostado`);
       }
     }
 
